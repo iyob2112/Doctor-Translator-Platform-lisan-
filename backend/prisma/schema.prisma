@@ -1,0 +1,612 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  doctor
+  translator
+  admin
+  hospital_admin
+  subadmin
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum SessionStatus {
+  pending
+  active
+  completed
+  cancelled
+}
+
+enum WithdrawalStatus {
+  pending
+  approved
+  paid
+  rejected
+}
+
+enum CallMode {
+  video
+  voice
+}
+
+enum RequestStatus {
+  open
+  accepted
+  expired
+  cancelled
+}
+
+enum SessionPriority {
+  routine
+  stat
+}
+
+enum SubscriptionStatus {
+  pending
+  active
+  expired
+  cancelled
+}
+
+enum PaymentKind {
+  subscription
+  minute_package
+  booking
+  usage_invoice
+}
+
+enum UsageInvoiceStatus {
+  open
+  issued
+  paid
+  void
+}
+
+enum OndemandRateUnit {
+  hour
+  minute
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  cancelled
+}
+
+enum MinuteTxnKind {
+  purchase
+  usage
+  adjustment
+  expiry
+}
+
+enum BookingStatus {
+  pending_payment
+  confirmed
+  cancelled
+  completed
+  expired
+}
+
+model Organization {
+  id          String       @id @default(uuid())
+  name        String
+  address     String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  departments        Department[]
+  users              User[]
+  sessions           Session[]
+  subscriptions      Subscription[]
+  devices            Device[]
+  minuteBalance      MinuteBalance?
+  minuteTransactions MinuteTransaction[]
+  bookings           Booking[]
+  payments           Payment[]
+  usageInvoices      UsageInvoice[]
+
+  @@map("organizations")
+}
+
+model Department {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  name           String
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users          User[]
+  sessions       Session[]
+
+  @@map("departments")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String    @map("password_hash")
+  fullName       String    @map("full_name")
+  role           Role
+  organizationId String?   @map("organization_id")
+  departmentId   String?   @map("department_id")
+  isActive            Boolean @default(true) @map("is_active")
+  mustChangePassword  Boolean @default(false) @map("must_change_password")
+  permissions         String[] @default([])
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization        Organization?       @relation(fields: [organizationId], references: [id])
+  department          Department?         @relation(fields: [departmentId], references: [id])
+  translatorProfile   TranslatorProfile?
+  sessionsAsDoctor    Session[]           @relation("DoctorSessions")
+  sessionsAsTranslator Session[]          @relation("TranslatorSessions")
+  requestsAccepted    TranslatorRequest[]
+  transfersFrom       SessionTransfer[]   @relation("TransferFrom")
+  transfersTo         SessionTransfer[]   @relation("TransferTo")
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  unmatchedAcks       Session[]            @relation("UnmatchedAck")
+  sessionMessages     SessionMessage[]
+  withdrawalRequests  WithdrawalRequest[]
+  subscriptions       Subscription[]
+  bookingsCreated     Booking[]           @relation("BookingCreatedBy")
+  bookingsAssigned    Booking[]           @relation("BookingTranslator")
+  payments            Payment[]
+
+  @@map("users")
+}
+
+model WithdrawalRequest {
+  id            String           @id @default(uuid())
+  translatorId  String           @map("translator_id")
+  amountEtb     Decimal          @map("amount_etb") @db.Decimal(12, 2)
+  method        String
+  accountName   String           @map("account_name")
+  accountNumber String           @map("account_number")
+  note          String?
+  periodKey     String?          @map("period_key")
+  periodStart   DateTime?        @map("period_start")
+  periodEnd     DateTime?        @map("period_end")
+  status        WithdrawalStatus @default(pending)
+  reviewNote    String?          @map("review_note")
+  reviewedAt    DateTime?        @map("reviewed_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  translator User @relation(fields: [translatorId], references: [id], onDelete: Cascade)
+
+  @@index([translatorId, createdAt])
+  @@index([translatorId, periodKey])
+  @@index([status])
+  @@index([periodKey])
+  @@map("withdrawal_requests")
+}
+
+model TranslatorProfile {
+  id                  String         @id @default(uuid())
+  userId              String         @unique @map("user_id")
+  isOnline            Boolean        @default(false) @map("is_online")
+  wantsOnline         Boolean        @default(false) @map("wants_online")
+  approvalStatus      ApprovalStatus @default(pending) @map("approval_status")
+  lastSeenAt          DateTime?      @map("last_seen_at")
+  reviewedAt          DateTime?      @map("reviewed_at")
+  rejectionReason     String?        @map("rejection_reason")
+  flagged             Boolean        @default(false)
+  flaggedAt           DateTime?      @map("flagged_at")
+  flaggedReason       String?        @map("flagged_reason")
+  payoutMethod        String?        @map("payout_method")
+  payoutAccountName   String?        @map("payout_account_name")
+  payoutAccountNumber String?        @map("payout_account_number")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  languages           TranslatorLanguage[]
+
+  @@map("translator_profiles")
+}
+
+model Language {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  translators TranslatorLanguage[]
+  sessions    Session[]
+  requests    TranslatorRequest[]
+  bookings    Booking[]
+
+  @@map("languages")
+}
+
+model TranslatorLanguage {
+  id           String            @id @default(uuid())
+  translatorId String            @map("translator_id")
+  languageId   String            @map("language_id")
+  translator   TranslatorProfile @relation(fields: [translatorId], references: [id], onDelete: Cascade)
+  language     Language          @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([translatorId, languageId])
+  @@map("translator_languages")
+}
+
+model Session {
+  id                    String        @id @default(uuid())
+  doctorId              String        @map("doctor_id")
+  translatorId          String?       @map("translator_id")
+  organizationId        String        @map("organization_id")
+  departmentId          String?       @map("department_id")
+  languageId            String?       @map("language_id")
+  status                SessionStatus @default(pending)
+  startedAt             DateTime?     @map("started_at")
+  endedAt               DateTime?     @map("ended_at")
+  durationSeconds       Int?          @map("duration_seconds")
+  deviceUsed            String?       @map("device_used")
+  callMode              CallMode      @default(video) @map("call_mode")
+  billingMode           String?       @map("billing_mode")
+  interpreterNotes      String?       @map("interpreter_notes")
+  providerRating        Int?          @map("provider_rating")
+  providerRatingComment String?       @map("provider_rating_comment")
+  priority              SessionPriority @default(routine)
+  pageAttempt           Int           @default(0) @map("page_attempt")
+  unmatchedAt           DateTime?     @map("unmatched_at")
+  unmatchedReason       String?       @map("unmatched_reason")
+  unmatchedAckAt        DateTime?     @map("unmatched_ack_at")
+  unmatchedAckById      String?       @map("unmatched_ack_by_id")
+  attendingName         String?       @map("attending_name")
+  roomLabel             String?       @map("room_label")
+  visitReason           String?       @map("visit_reason")
+  handoffReason         String?       @map("handoff_reason")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  doctor       User                 @relation("DoctorSessions", fields: [doctorId], references: [id])
+  translator   User?                @relation("TranslatorSessions", fields: [translatorId], references: [id])
+  unmatchedAckBy User?              @relation("UnmatchedAck", fields: [unmatchedAckById], references: [id], onDelete: SetNull)
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  department   Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  language     Language?            @relation(fields: [languageId], references: [id])
+  transfers          SessionTransfer[]
+  requests           TranslatorRequest[]
+  messages           SessionMessage[]
+  minuteTransactions MinuteTransaction[]
+  usageLines         UsageLine[]
+
+  @@map("sessions")
+}
+
+model SessionTransfer {
+  id               String   @id @default(uuid())
+  sessionId        String   @map("session_id")
+  fromTranslatorId String   @map("from_translator_id")
+  toTranslatorId   String   @map("to_translator_id")
+  reason           String?
+  transferredAt    DateTime @default(now()) @map("transferred_at")
+  session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  fromTranslator   User     @relation("TransferFrom", fields: [fromTranslatorId], references: [id])
+  toTranslator     User     @relation("TransferTo", fields: [toTranslatorId], references: [id])
+
+  @@map("session_transfers")
+}
+
+model TranslatorRequest {
+  id          String        @id @default(uuid())
+  sessionId   String        @map("session_id")
+  languageId  String        @map("language_id")
+  status      RequestStatus @default(open)
+  requestedAt DateTime      @default(now()) @map("requested_at")
+  acceptedBy  String?       @map("accepted_by")
+  acceptedAt  DateTime?     @map("accepted_at")
+  session     Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  language    Language      @relation(fields: [languageId], references: [id])
+  acceptor    User?         @relation(fields: [acceptedBy], references: [id])
+
+  @@map("translator_requests")
+}
+
+model SessionMessage {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
+  senderId  String   @map("sender_id")
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("session_messages")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Plan {
+  id           String         @id @default(uuid())
+  slug         String         @unique
+  name         String
+  description  String?
+  priceEtb     Decimal        @map("price_etb") @db.Decimal(12, 2)
+  maxDevices   Int            @map("max_devices")
+  intervalDays Int            @default(30) @map("interval_days")
+  isActive     Boolean        @default(true) @map("is_active")
+  sortOrder    Int            @default(0) @map("sort_order")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  subscriptions Subscription[]
+  payments      Payment[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  planId         String             @map("plan_id")
+  createdById    String             @map("created_by_id")
+  status         SubscriptionStatus @default(pending)
+  startsAt       DateTime?          @map("starts_at")
+  expiresAt      DateTime?          @map("expires_at")
+  autoRenew      Boolean            @default(true) @map("auto_renew")
+  cancelledAt    DateTime?          @map("cancelled_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  payments     Payment[]
+
+  @@index([organizationId, status])
+  @@index([expiresAt])
+  @@map("subscriptions")
+}
+
+model Device {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  fingerprint    String
+  label          String?
+  userAgent      String?  @map("user_agent")
+  lastSeenAt     DateTime @default(now()) @map("last_seen_at")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, fingerprint])
+  @@index([organizationId, isActive])
+  @@map("devices")
+}
+
+model MinutePackage {
+  id            String              @id @default(uuid())
+  slug          String              @unique
+  name          String
+  minutes       Int
+  priceEtb      Decimal             @map("price_etb") @db.Decimal(12, 2)
+  expiresInDays Int?                @map("expires_in_days")
+  isActive      Boolean             @default(true) @map("is_active")
+  sortOrder     Int                 @default(0) @map("sort_order")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  payments      Payment[]
+  transactions  MinuteTransaction[]
+
+  @@map("minute_packages")
+}
+
+model MinuteBalance {
+  id               String       @id @default(uuid())
+  organizationId   String       @unique @map("organization_id")
+  remainingMinutes Decimal      @default(0) @map("remaining_minutes") @db.Decimal(12, 2)
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("minute_balances")
+}
+
+model MinuteTransaction {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  packageId      String?        @map("package_id")
+  paymentId      String?        @unique @map("payment_id")
+  sessionId      String?        @unique @map("session_id")
+  kind           MinuteTxnKind
+  minutes        Decimal        @db.Decimal(12, 2)
+  balanceAfter   Decimal        @map("balance_after") @db.Decimal(12, 2)
+  note           String?
+  expiresAt      DateTime?      @map("expires_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  package      MinutePackage? @relation(fields: [packageId], references: [id])
+  payment      Payment?       @relation(fields: [paymentId], references: [id])
+  session      Session?       @relation(fields: [sessionId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@map("minute_transactions")
+}
+
+model BookingService {
+  id              String    @id @default(uuid())
+  slug            String    @unique
+  name            String
+  description     String?
+  callMode        CallMode  @default(video) @map("call_mode")
+  pricePerHourEtb Decimal   @map("price_per_hour_etb") @db.Decimal(12, 2)
+  isActive        Boolean   @default(true) @map("is_active")
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  bookings        Booking[]
+
+  @@map("booking_services")
+}
+
+model BookingSlot {
+  id          String   @id @default(uuid())
+  weekday     Int
+  startMinute Int      @map("start_minute")
+  endMinute   Int      @map("end_minute")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([weekday, isActive])
+  @@map("booking_slots")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  organizationId  String        @map("organization_id")
+  bookedById      String        @map("booked_by_id")
+  translatorId    String?       @map("translator_id")
+  languageId      String        @map("language_id")
+  serviceId       String        @map("service_id")
+  startsAt        DateTime      @map("starts_at")
+  endsAt          DateTime      @map("ends_at")
+  durationMinutes Int           @map("duration_minutes")
+  priceEtb        Decimal       @map("price_etb") @db.Decimal(12, 2)
+  status          BookingStatus @default(pending_payment)
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookedBy     User           @relation("BookingCreatedBy", fields: [bookedById], references: [id])
+  translator   User?          @relation("BookingTranslator", fields: [translatorId], references: [id])
+  language     Language       @relation(fields: [languageId], references: [id])
+  service      BookingService @relation(fields: [serviceId], references: [id])
+  payments     Payment[]
+
+  @@index([organizationId, startsAt])
+  @@index([translatorId, startsAt, endsAt])
+  @@index([status])
+  @@map("bookings")
+}
+
+model PlatformBillingConfig {
+  id            String            @id @default("default")
+  rateEtb       Decimal           @map("rate_etb") @db.Decimal(12, 2)
+  rateUnit      OndemandRateUnit  @default(hour) @map("rate_unit")
+  enabled       Boolean           @default(true)
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  @@map("platform_billing_config")
+}
+
+model UsageInvoice {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  periodKey      String             @map("period_key")
+  periodStart    DateTime           @map("period_start")
+  periodEnd      DateTime           @map("period_end")
+  status         UsageInvoiceStatus @default(open)
+  totalMinutes   Decimal            @default(0) @map("total_minutes") @db.Decimal(12, 2)
+  totalEtb       Decimal            @default(0) @map("total_etb") @db.Decimal(12, 2)
+  rateEtb        Decimal            @map("rate_etb") @db.Decimal(12, 2)
+  rateUnit       OndemandRateUnit   @default(hour) @map("rate_unit")
+  issuedAt       DateTime?          @map("issued_at")
+  paidAt         DateTime?          @map("paid_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lines        UsageLine[]
+  payments     Payment[]
+
+  @@unique([organizationId, periodKey])
+  @@index([status, periodEnd])
+  @@index([organizationId, status])
+  @@map("usage_invoices")
+}
+
+model UsageLine {
+  id              String           @id @default(uuid())
+  invoiceId       String           @map("invoice_id")
+  sessionId       String           @unique @map("session_id")
+  durationSeconds Int              @map("duration_seconds")
+  minutes         Decimal          @db.Decimal(12, 2)
+  rateEtb         Decimal          @map("rate_etb") @db.Decimal(12, 2)
+  rateUnit        OndemandRateUnit @default(hour) @map("rate_unit")
+  amountEtb       Decimal          @map("amount_etb") @db.Decimal(12, 2)
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  invoice UsageInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  session Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("usage_lines")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  userId         String        @map("user_id")
+  kind           PaymentKind
+  status         PaymentStatus @default(pending)
+  amountEtb      Decimal       @map("amount_etb") @db.Decimal(12, 2)
+  currency       String        @default("ETB")
+  txRef          String        @unique @map("tx_ref")
+  chapaRef       String?       @map("chapa_ref")
+  checkoutUrl    String?       @map("checkout_url")
+  verifiedAt     DateTime?     @map("verified_at")
+  failureReason  String?       @map("failure_reason")
+  metadata       Json?
+  planId         String?       @map("plan_id")
+  subscriptionId String?       @map("subscription_id")
+  packageId      String?       @map("package_id")
+  bookingId      String?       @map("booking_id")
+  invoiceId      String?       @map("invoice_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  user         User           @relation(fields: [userId], references: [id])
+  plan         Plan?          @relation(fields: [planId], references: [id])
+  subscription Subscription?  @relation(fields: [subscriptionId], references: [id])
+  package      MinutePackage? @relation(fields: [packageId], references: [id])
+  booking      Booking?       @relation(fields: [bookingId], references: [id])
+  invoice      UsageInvoice?  @relation(fields: [invoiceId], references: [id])
+  minuteTxn    MinuteTransaction?
+
+  @@index([organizationId, createdAt])
+  @@index([status])
+  @@map("payments")
+}

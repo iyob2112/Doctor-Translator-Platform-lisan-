@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+@layer base {
+  body {
+    min-height: 100vh;
+    background-color: #f5f7fb;
+    background-image:
+      radial-gradient(760px 420px at 8% -8%, rgba(20, 166, 141, 0.18), transparent 60%),
+      radial-gradient(680px 380px at 96% 2%, rgba(122, 82, 245, 0.16), transparent 58%),
+      radial-gradient(900px 520px at 50% 108%, rgba(56, 194, 168, 0.12), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+
+  ::selection {
+    background: rgba(20, 166, 141, 0.22);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-4xl border border-white/70 bg-white/80 p-6 shadow-soft backdrop-blur-xl;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition
+      focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 active:scale-[0.98];
+  }
+
+  .btn-brand {
+    @apply btn bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-600/25
+      hover:from-brand-400 hover:to-brand-500;
+  }
+
+  .btn-dark {
+    @apply btn bg-ink text-white shadow-lg shadow-ink/20 hover:bg-ink/90;
+  }
+
+  .btn-ghost {
+    @apply btn border border-slate-200/90 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white;
+  }
+
+  .btn-danger {
+    @apply btn bg-rose-500 text-white shadow-lg shadow-rose-500/25 hover:bg-rose-600;
+  }
+
+  .field {
+    @apply w-full rounded-2xl border border-slate-200 bg-white/85 px-4 py-3 text-sm text-ink
+      placeholder:text-slate-400 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100;
+  }
+
+  .select {
+    @apply field cursor-pointer appearance-none bg-no-repeat pr-11;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+    background-position: right 1rem center;
+    background-size: 1rem 1rem;
+  }
+
+  .label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition;
+  }
+
+  .chip-on {
+    @apply chip bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-md shadow-brand-600/25;
+  }
+
+  .chip-off {
+    @apply chip border border-slate-200 bg-white/70 text-slate-600 hover:border-brand-300 hover:text-brand-700;
+  }
+
+  .surface-dark {
+    @apply rounded-4xl border border-white/10 bg-white/5 backdrop-blur-xl;
+  }
+
+  .icon-btn {
+    @apply grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-white/10 text-white
+      transition hover:bg-white/20 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/20 active:scale-95;
+  }
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.video-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #05070d;
+}
+
+.voice-stage {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(56, 194, 168, 0.32), transparent 46%),
+    radial-gradient(circle at 88% 88%, rgba(122, 82, 245, 0.24), transparent 42%),
+    linear-gradient(180deg, #152033 0%, #0b1020 100%);
+}
+
+.voice-ring {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 194, 168, 0.4);
+  animation: voice-ring 2.6s ease-out infinite;
+}
+
+.voice-ring-a {
+  inset: -1.1rem;
+}
+
+.voice-ring-b {
+  inset: -2.15rem;
+  animation-delay: 0.85s;
+}
+
+@keyframes voice-ring {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+.voice-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
+  height: 44px;
+}
+
+.voice-bars span {
+  width: 5px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.voice-bars.is-live span {
+  background: #5eead4;
+  animation: voice-bar 0.95s ease-in-out infinite;
+}
+
+.voice-bars.is-live span:nth-child(2n) {
+  animation-duration: 0.72s;
+}
+
+.voice-bars.is-live span:nth-child(3n) {
+  animation-duration: 1.15s;
+}
+
+.voice-bars.is-muted span {
+  background: rgba(255, 255, 255, 0.2);
+  animation: none;
+  height: 10px;
+}
+
+@keyframes voice-bar {
+  0%,
+  100% {
+    height: 8px;
+  }
+  50% {
+    height: 42px;
+  }
+}
+
+.scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(11, 16, 32, 0.18) transparent;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(11, 16, 32, 0.16);
+  border-radius: 999px;
+}
