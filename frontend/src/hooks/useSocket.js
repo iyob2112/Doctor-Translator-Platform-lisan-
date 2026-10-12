@@ -1,10 +1,7 @@
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { getAccessToken, refreshAccessToken } from "../api/client.js";
-
-const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:4000");
+import { SOCKET_URL } from "../api/config.js";
 
 const EVENTS = [
   "translator:request_new",

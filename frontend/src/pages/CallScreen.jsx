@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { getAccessToken } from "../api/client.js";
+import { API_BASE } from "../api/config.js";
 import { releaseCallMedia } from "../lib/callMedia.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useSocket } from "../hooks/useSocket.js";
@@ -445,7 +446,7 @@ export default function CallScreen() {
     if (keepalive) {
       const token = getAccessToken();
       try {
-        await fetch(`/api/v1/sessions/${id}/notes`, {
+        await fetch(`${API_BASE}/sessions/${id}/notes`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -453,7 +454,6 @@ export default function CallScreen() {
           },
           body: JSON.stringify(payload),
           keepalive: true,
-          credentials: "same-origin",
         });
       } catch {
         /* tab is closing */

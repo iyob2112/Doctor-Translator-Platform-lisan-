@@ -1,8 +1,9 @@
 import axios from "axios";
 import { getDeviceFingerprint } from "../lib/device.js";
+import { API_BASE } from "./config.js";
 
 const api = axios.create({
-  baseURL: "/api/v1",
+  baseURL: API_BASE,
 });
 
 let accessToken = localStorage.getItem("accessToken");
@@ -48,7 +49,7 @@ export async function refreshAccessToken() {
   if (!refreshToken) throw new Error("No refresh token");
   if (!refreshing) {
     refreshing = axios
-      .post("/api/v1/auth/refresh", { refreshToken })
+      .post(`${API_BASE}/auth/refresh`, { refreshToken })
       .then((res) => {
         setTokens(res.data);
         return res.data.accessToken;
