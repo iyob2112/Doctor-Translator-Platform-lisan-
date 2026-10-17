@@ -25,13 +25,17 @@ export function Avatar({ name, className = "h-10 w-10 text-sm" }) {
   );
 }
 
-export function BrandMark({ tone = "light", showWordmark = true }) {
+export function BrandMark({ tone = "light", showWordmark = true, compact = false }) {
   const darkUi = tone === "dark";
   const text = darkUi ? "text-white" : "text-ink";
   const sub = darkUi ? "text-white/50" : "text-slate-400";
   return (
-    <div className="flex items-center gap-3">
-      <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-black/10">
+    <div className={`flex min-w-0 items-center ${compact ? "gap-2" : "gap-2.5 sm:gap-3"}`}>
+      <span
+        className={`grid shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/10 ${
+          compact ? "h-9 w-9 p-1" : "h-9 w-9 p-1.5 sm:h-11 sm:w-11"
+        }`}
+      >
         <img
           src={BRAND_LOGO_DARK}
           alt={BRAND_NAME}
@@ -39,9 +43,11 @@ export function BrandMark({ tone = "light", showWordmark = true }) {
         />
       </span>
       {showWordmark ? (
-        <span className="leading-tight">
-          <span className={`block font-display text-lg font-semibold tracking-tight ${text}`}>{BRAND_NAME}</span>
-          <span className={`block text-[11px] uppercase tracking-[0.22em] ${sub}`}>
+        <span className="min-w-0 leading-tight">
+          <span className={`block truncate font-display font-semibold tracking-tight ${compact ? "text-base" : "text-base sm:text-lg"} ${text}`}>
+            {BRAND_NAME}
+          </span>
+          <span className={`hidden truncate text-[11px] uppercase tracking-[0.22em] sm:block ${sub}`}>
             {BRAND_TAGLINE}
           </span>
         </span>
@@ -58,34 +64,38 @@ export default function Layout({ eyebrow, title, description, actions, children 
   const onPlans = Boolean(plansHref && location.pathname.startsWith(plansHref));
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-8">
-          <Link to="/" className="shrink-0">
+    <div className="min-h-screen min-h-[100dvh]">
+      <div className="sticky top-0 z-30 border-b border-white/60 bg-white/80 backdrop-blur-xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 md:px-8">
+          <Link to="/" className="min-w-0 shrink">
             <BrandMark />
           </Link>
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2 md:gap-3">
             {plansHref ? (
-              <Link to={plansHref} className="btn-dark">
+              <Link to={plansHref} className="btn-dark px-3 sm:px-5" title="Plans">
                 <Icon name="coin" className="h-4 w-4" />
-                Plans
+                <span className="hidden sm:inline">Plans</span>
               </Link>
             ) : null}
-            {actions && !onPlans ? actions : null}
+            {actions && !onPlans ? (
+              <div className="flex max-w-[46vw] items-center justify-end gap-1.5 overflow-x-auto sm:max-w-none">
+                {actions}
+              </div>
+            ) : null}
             <Link
               to="/profile"
-              className="hidden items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 py-1.5 pl-2 pr-4 transition hover:border-brand-300 sm:flex"
+              className="hidden items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 py-1.5 pl-2 pr-4 transition hover:border-brand-300 md:flex"
             >
               <Avatar name={user.fullName} className="h-9 w-9 text-xs" />
-              <span className="leading-tight">
-                <span className="block text-sm font-semibold">{user.fullName}</span>
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-sm font-semibold">{user.fullName}</span>
                 <span className="block text-xs capitalize text-slate-500">{roleLabel(user.role)}</span>
               </span>
             </Link>
-            <Link to="/profile" className="btn-ghost sm:hidden" title="Profile">
+            <Link to="/profile" className="btn-ghost px-3 md:hidden" title="Profile">
               <Icon name="user" className="h-4 w-4" />
             </Link>
-            <button onClick={logout} className="btn-ghost" title="Sign out">
+            <button onClick={logout} className="btn-ghost px-3 sm:px-5" title="Sign out">
               <Icon name="logout" className="h-4 w-4" />
               <span className="hidden sm:inline">Sign out</span>
             </button>
@@ -93,15 +103,17 @@ export default function Layout({ eyebrow, title, description, actions, children 
         </div>
       </div>
 
-      <header className="mx-auto max-w-7xl px-4 pt-8 md:px-8">
-        {eyebrow ? <p className="label">{eyebrow}</p> : null}
-        <h1 className="mt-2 font-display text-3xl md:text-4xl">{title}</h1>
+      <header className="mx-auto max-w-7xl px-3 pt-6 sm:px-4 sm:pt-8 md:px-8">
+        {eyebrow ? <p className="label truncate">{eyebrow}</p> : null}
+        <h1 className="mt-2 font-display text-2xl leading-tight sm:text-3xl md:text-4xl">{title}</h1>
         {description ? (
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
         ) : null}
       </header>
 
-      <main className="mx-auto max-w-7xl animate-fade-up px-4 pb-16 pt-6 md:px-8">{children}</main>
+      <main className="mx-auto max-w-7xl animate-fade-up px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-5 sm:px-4 sm:pt-6 md:px-8">
+        {children}
+      </main>
     </div>
   );
 }
@@ -112,19 +124,19 @@ export function Card({ children, className = "" }) {
 
 export function CardTitle({ icon, title, hint, right }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {icon ? (
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600">
             <Icon name={icon} className="h-5 w-5" />
           </span>
         ) : null}
-        <div>
-          <h2 className="font-display text-xl">{title}</h2>
+        <div className="min-w-0">
+          <h2 className="font-display text-lg sm:text-xl">{title}</h2>
           {hint ? <p className="mt-0.5 text-sm text-slate-500">{hint}</p> : null}
         </div>
       </div>
-      {right}
+      {right ? <div className="shrink-0">{right}</div> : null}
     </div>
   );
 }
@@ -137,13 +149,15 @@ export function Stat({ icon, label, value, tone = "brand" }) {
     slate: "bg-slate-100 text-slate-600",
   };
   return (
-    <div className="flex items-center gap-3 rounded-3xl border border-white/70 bg-white/70 p-4 shadow-soft backdrop-blur">
-      <span className={`grid h-11 w-11 place-items-center rounded-2xl ${tones[tone]}`}>
+    <div className="flex min-w-0 items-center gap-3 rounded-3xl border border-white/70 bg-white/70 p-3 shadow-soft backdrop-blur sm:p-4">
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl sm:h-11 sm:w-11 ${tones[tone]}`}>
         <Icon name={icon} className="h-5 w-5" />
       </span>
-      <div className="leading-tight">
-        <p className="font-display text-2xl">{value}</p>
-        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <div className="min-w-0 leading-tight">
+        <p className="truncate font-display text-xl sm:text-2xl" title={String(value ?? "")}>
+          {value}
+        </p>
+        <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400 sm:text-xs">{label}</p>
       </div>
     </div>
   );

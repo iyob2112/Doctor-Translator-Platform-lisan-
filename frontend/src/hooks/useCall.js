@@ -144,6 +144,23 @@ function addLocalTracks(pc, stream) {
   });
 }
 
+function streamHasLiveTracks(stream) {
+  return Boolean(stream?.getTracks?.().some((track) => track.readyState === "live"));
+}
+
+function refreshLocalTracks(sessionId, stream) {
+  if (!sessionId || !stream) return;
+  for (const [key, call] of calls.entries()) {
+    if (key === sessionId || key.startsWith(`${sessionId}:`)) {
+      addLocalTracks(call.pc, stream);
+    }
+  }
+}
+
+function isClinicRole(role) {
+  return role === "hospital_admin" || role === "doctor";
+}
+
 function toSdp(value) {
   if (!value) return null;
   if (value.sdp && value.type && typeof value.sdp === "string") return { type: value.type, sdp: value.sdp };
@@ -208,6 +225,7 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
   const sessionRef = useRef(session);
   const userRef = useRef(user);
   const iceRef = useRef(iceServers);
+  const enabledRef = useRef(Boolean(enabled));
   const signalChain = useRef(Promise.resolve());
   const offerToRef = useRef(new Set());
   const goneRef = useRef(new Set());
@@ -215,6 +233,7 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
   const dropPeerRef = useRef(() => {});
   sessionRef.current = session;
   userRef.current = user;
+  enabledRef.current = Boolean(enabled);
 
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
@@ -370,19 +389,22 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
       return null;
     }
     const voiceOnly = forceAudio || sessionRef.current?.callMode === "voice";
-    if (
-      !forceAudio &&
-      localStreamRef.current?.getTracks().some((track) => track.readyState === "live")
-    ) {
+    if (!forceAudio && streamHasLiveTracks(localStreamRef.current)) {
       playLocal(localVideoRef.current, localStreamRef.current);
+      refreshLocalTracks(sessionRef.current?.id, localStreamRef.current);
       setMediaStarted(true);
       return localStreamRef.current;
     }
     try {
       if (forceAudio) releaseCallMedia();
+      // Drop a dead/stale ref so primeCallMedia can adopt the pre-check stream.
+      if (localStreamRef.current && !streamHasLiveTracks(localStreamRef.current)) {
+        localStreamRef.current = null;
+      }
       const stream = await primeCallMedia(voiceOnly);
       localStreamRef.current = stream;
       playLocal(localVideoRef.current, stream);
+      refreshLocalTracks(sessionRef.current?.id, stream);
       if (!stream.getVideoTracks().length) setCameraOff(true);
       setMediaError("");
       setMediaStarted(true);
@@ -461,7 +483,7 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
   const signalReady = useCallback(() => {
     const current = sessionRef.current;
     const target = primaryPeerId(current, userRef.current);
-    if (userRef.current?.role !== "translator" || !localStreamRef.current || !target) return;
+    if (userRef.current?.role !== "translator" || !streamHasLiveTracks(localStreamRef.current) || !target) return;
     const call = current?.id ? calls.get(callKey(current.id, target)) : null;
     const ice = call?.pc.iceConnectionState;
     if (ice === "connected" || ice === "completed") return;
@@ -492,6 +514,23 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
         return;
       }
       if (packet?.session_id && packet.session_id !== current.id) return;
+
+      // Do not start media or negotiate while the pre-call check is still open.
+      // Early negotiation + Join stopping those tracks was killing video when
+      // the hospital joined first and the translator joined after the check.
+      if (!enabledRef.current && !isWatcher(userRef.current)) {
+        if (payload.type === "bye") {
+          const peerId =
+            packet.from || payload.from || primaryPeerId(current, userRef.current);
+          if (peerId && peerId !== userRef.current?.id) {
+            dropPeerRef.current(peerId, { force: true });
+          }
+          return;
+        }
+        queuedSignals.push(packet);
+        return;
+      }
+
       const peerId =
         packet.from ||
         payload.from ||
@@ -502,14 +541,20 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
           dropPeerRef.current(peerId, { force: true });
           return;
         }
-        if (payload.type === "ready" && (userRef.current?.role === "hospital_admin" || userRef.current?.role === "doctor")) {
-          if (!localStreamRef.current) await startLocalMedia().catch(() => {});
+        if (payload.type === "ready" && isClinicRole(userRef.current?.role)) {
+          if (!streamHasLiveTracks(localStreamRef.current)) {
+            await startLocalMedia().catch(() => {});
+          }
           await createOffer(peerId);
           return;
         }
         if (payload.type === "offer") {
-          if (!localStreamRef.current && !isWatcher(userRef.current)) {
+          if (!streamHasLiveTracks(localStreamRef.current) && !isWatcher(userRef.current)) {
             await startLocalMedia().catch(() => {});
+          }
+          if (!streamHasLiveTracks(localStreamRef.current) && !isWatcher(userRef.current)) {
+            queuedSignals.push(packet);
+            return;
           }
           await acceptOffer(payload, peerId);
           return;
@@ -551,23 +596,29 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
 
   const onPeers = useCallback((packet) => {
     if (packet?.session_id && packet.session_id !== sessionRef.current?.id) return;
+    if (!enabledRef.current) return;
     (packet?.peers || []).forEach((peer) => {
       if (!peer?.id || peer.id === userRef.current?.id) return;
       rememberPeer(peer);
       if (isHiddenPeer(peer)) {
-        if (!isWatcher(userRef.current) && localStreamRef.current) {
+        if (isClinicRole(userRef.current?.role) && streamHasLiveTracks(localStreamRef.current)) {
           offerToRef.current.add(peer.id);
           createOffer(peer.id).catch(() => {});
         }
         return;
       }
       if (isWatcher(userRef.current)) return;
-      if (userRef.current?.id && userRef.current.id < peer.id) {
+      // Clinic always offers; translator only announces ready (avoids glare).
+      if (userRef.current?.role === "translator") {
+        if (streamHasLiveTracks(localStreamRef.current)) signalReady();
+        return;
+      }
+      if (isClinicRole(userRef.current?.role)) {
         offerToRef.current.add(peer.id);
-        if (localStreamRef.current) createOffer(peer.id).catch(() => {});
+        if (streamHasLiveTracks(localStreamRef.current)) createOffer(peer.id).catch(() => {});
       }
     });
-  }, [createOffer, rememberPeer]);
+  }, [createOffer, rememberPeer, signalReady]);
 
   const onPeerJoined = useCallback((packet) => {
     const peer = packet?.peer;
@@ -575,17 +626,24 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
     if (packet?.session_id && packet.session_id !== sessionRef.current?.id) return;
     rememberPeer(peer);
     goneRef.current.delete(peer.id);
+    if (!enabledRef.current) return;
     if (isHiddenPeer(peer)) {
-      if (!isWatcher(userRef.current) && localStreamRef.current) {
+      if (isClinicRole(userRef.current?.role) && streamHasLiveTracks(localStreamRef.current)) {
         offerToRef.current.add(peer.id);
         createOffer(peer.id).catch(() => {});
       }
       return;
     }
     if (isWatcher(userRef.current)) return;
-    offerToRef.current.add(peer.id);
-    if (localStreamRef.current) createOffer(peer.id).catch(() => {});
-  }, [createOffer, rememberPeer]);
+    if (userRef.current?.role === "translator") {
+      if (streamHasLiveTracks(localStreamRef.current)) signalReady();
+      return;
+    }
+    if (isClinicRole(userRef.current?.role)) {
+      offerToRef.current.add(peer.id);
+      if (streamHasLiveTracks(localStreamRef.current)) createOffer(peer.id).catch(() => {});
+    }
+  }, [createOffer, rememberPeer, signalReady]);
 
   const onPeerLeft = useCallback((packet) => {
     const peerId = packet?.user_id || packet?.peerId;
@@ -595,10 +653,18 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
   }, [dropPeer]);
 
   useEffect(() => {
-    if (!session?.id || !queuedSignals.length) return undefined;
-    queuedSignals.splice(0).forEach((packet) => handleSignal(packet));
+    // Drop stale signals from a previous session so they cannot revive dead tracks.
+    if (!session?.id) {
+      queuedSignals.length = 0;
+      return undefined;
+    }
+    if (!enabled) return undefined;
+    if (!mediaStarted && !isWatcher(userRef.current)) return undefined;
+    if (!queuedSignals.length) return undefined;
+    const pending = queuedSignals.splice(0);
+    pending.forEach((packet) => handleSignal(packet));
     return undefined;
-  }, [handleSignal, session?.id]);
+  }, [enabled, handleSignal, mediaStarted, session?.id]);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -606,7 +672,16 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
       startLocalMedia().catch(() => {});
       return undefined;
     }
-    if (localStreamRef.current || !takeCallMedia()) return undefined;
+    if (streamHasLiveTracks(localStreamRef.current)) {
+      playLocal(localVideoRef.current, localStreamRef.current);
+      refreshLocalTracks(sessionRef.current?.id, localStreamRef.current);
+      setMediaStarted(true);
+      return undefined;
+    }
+    // Prefer the pre-check stream; otherwise open a fresh capture.
+    if (!takeCallMedia() && !localStreamRef.current) {
+      /* still call startLocalMedia — it will request devices */
+    }
     startLocalMedia().catch(() => {});
     return undefined;
   }, [enabled, startLocalMedia]);
@@ -616,16 +691,24 @@ export function useCall({ socketRef, session, user, enabled, iceServers }) {
     socketRef.current.emit("session:join", { session_id: session.id });
     if (!mediaStarted) return undefined;
     playLocal(localVideoRef.current, localStreamRef.current);
-    signalReady();
+    if (userRef.current?.role === "translator") signalReady();
+    else {
+      const target = primaryPeerId(sessionRef.current, userRef.current);
+      if (target) createOffer(target).catch(() => {});
+      for (const peerId of offerToRef.current) {
+        createOffer(peerId).catch(() => {});
+      }
+    }
     const retry = setInterval(() => {
       if (isWatcher(userRef.current)) return;
+      if (!streamHasLiveTracks(localStreamRef.current) && !isWatcher(userRef.current)) return;
       if (userRef.current?.role === "translator") signalReady();
       else {
         const target = primaryPeerId(sessionRef.current, userRef.current);
         if (target) createOffer(target).catch(() => {});
-      }
-      for (const peerId of offerToRef.current) {
-        createOffer(peerId).catch(() => {});
+        for (const peerId of offerToRef.current) {
+          createOffer(peerId).catch(() => {});
+        }
       }
     }, 2500);
     return () => clearInterval(retry);

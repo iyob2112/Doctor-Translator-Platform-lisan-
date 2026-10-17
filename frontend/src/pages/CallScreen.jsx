@@ -9,6 +9,7 @@ import { attachRemoteStream, useCall } from "../hooks/useCall.js";
 import CallControls from "../components/CallControls.jsx";
 import RatingModal from "../components/RatingModal.jsx";
 import TransferModal from "../components/TransferModal.jsx";
+import PreCallCheckModal from "../components/PreCallCheckModal.jsx";
 import DailyRoom from "../components/DailyRoom.jsx";
 import CallChat from "../components/CallChat.jsx";
 import TranslatorCallDesk from "../components/TranslatorCallDesk.jsx";
@@ -110,7 +111,7 @@ function ZoomGallery({ tiles, localRef }) {
         ))}
       </div>
       {you ? (
-        <div className="absolute bottom-4 right-4 z-20 h-28 w-40 overflow-hidden rounded-xl border border-white/20 bg-[#2d2d2d] shadow-lg sm:h-32 sm:w-48">
+        <div className="absolute bottom-3 right-3 z-20 h-24 w-32 overflow-hidden rounded-xl border border-white/20 bg-[#2d2d2d] shadow-lg sm:bottom-4 sm:right-4 sm:h-32 sm:w-48">
           <ZoomTile self localRef={localRef} label="You" role={you.role} />
         </div>
       ) : null}
@@ -150,22 +151,22 @@ function VoiceCallStage({
         <button
           type="button"
           onClick={() => onUnlock()}
-          className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center"
+          className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-4 text-center sm:px-6"
         >
           <p className="text-[11px] uppercase tracking-[0.28em] text-brand-300">Voice interpretation</p>
-          <div className="relative mt-8 grid h-40 w-40 place-items-center">
+          <div className="relative mt-6 grid h-32 w-32 place-items-center sm:mt-8 sm:h-40 sm:w-40">
             <span className={`voice-ring voice-ring-a ${connected ? "" : "opacity-40"}`} />
             <span className={`voice-ring voice-ring-b ${connected ? "" : "opacity-30"}`} />
-            <span className="relative grid h-32 w-32 place-items-center rounded-full bg-gradient-to-br from-brand-400 via-brand-500 to-plum-500 text-4xl font-semibold text-white shadow-lg shadow-brand-600/30">
-              {initials(counterpart) || <Icon name="voice" className="h-12 w-12" />}
+            <span className="relative grid h-24 w-24 place-items-center rounded-full bg-gradient-to-br from-brand-400 via-brand-500 to-plum-500 text-3xl font-semibold text-white shadow-lg shadow-brand-600/30 sm:h-32 sm:w-32 sm:text-4xl">
+              {initials(counterpart) || <Icon name="voice" className="h-10 w-10 sm:h-12 sm:w-12" />}
             </span>
           </div>
-          <h2 className="mt-8 font-display text-4xl">{counterpart || "Connecting…"}</h2>
+          <h2 className="mt-6 max-w-full truncate px-2 font-display text-2xl sm:mt-8 sm:text-4xl">{counterpart || "Connecting…"}</h2>
           <p className="mt-2 text-sm text-white/50">
             {peerRole}
             {language ? ` · ${language}` : ""}
           </p>
-          <p className="mt-5 font-display text-4xl tabular-nums tracking-wide text-white/85">{elapsed}</p>
+          <p className="mt-4 font-display text-3xl tabular-nums tracking-wide text-white/85 sm:mt-5 sm:text-4xl">{elapsed}</p>
           <div className="mt-7">
             <VoiceBars live={connected} muted={muted} />
           </div>
@@ -263,10 +264,16 @@ export default function CallScreen() {
   const [dailyArmed, setDailyArmed] = useState(false);
   const [messages, setMessages] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
+  const [deskTab, setDeskTab] = useState("notes");
   const [unreadCount, setUnreadCount] = useState(0);
+  const watchOnly = isWatchOnly(user);
+  const isClinic = isClinicSide(user);
+  const isTranslatorRole = user.role === "translator";
+  const [precallReady, setPrecallReady] = useState(() => watchOnly);
   const chatOpenRef = useRef(false);
   const messageIdsRef = useRef(new Set());
-  chatOpenRef.current = chatOpen;
+  // Translator chat lives in the desk workspace — treat that tab as "open".
+  chatOpenRef.current = isTranslatorRole ? deskTab === "chat" : chatOpen;
   const endedRef = useRef(false);
   const deskRef = useRef({ notes: "", doctorName: "", roomLabel: "", visitReason: "" });
   const persistDeskRef = useRef(null);
@@ -277,8 +284,6 @@ export default function CallScreen() {
   const leaveRef = useRef(null);
   const peerHandlersRef = useRef({});
   const dailyRef = useRef(null);
-  const watchOnly = isWatchOnly(user);
-  const isClinic = isClinicSide(user);
 
   const socketRef = useSocket({
     "call:signal": (payload) => signalRef.current?.(payload),
@@ -351,7 +356,12 @@ export default function CallScreen() {
     socketRef,
     session,
     user,
-    enabled: Boolean(session && session.status === "active" && callConfig?.provider !== "daily"),
+    enabled: Boolean(
+      precallReady &&
+        session &&
+        session.status === "active" &&
+        callConfig?.provider !== "daily"
+    ),
     iceServers: callConfig?.iceServers,
   });
 
@@ -368,6 +378,14 @@ export default function CallScreen() {
     unlockMedia().catch(() => {});
     return undefined;
   }, [watchOnly, session?.id, session?.status, callConfig, unlockMedia]);
+
+  useEffect(() => {
+    if (!precallReady || watchOnly || !session || session.status !== "active") return undefined;
+    if (callConfig?.provider === "daily" && callConfig.roomUrl) {
+      setDailyArmed(true);
+    }
+    return undefined;
+  }, [precallReady, watchOnly, session?.id, session?.status, callConfig]);
 
   useEffect(() => {
     api
@@ -393,7 +411,7 @@ export default function CallScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (!session || session.status !== "active") return undefined;
+    if (!precallReady || !session || session.status !== "active") return undefined;
     const join = () => socketRef.current?.emit("session:join", { session_id: session.id });
     join();
     const timer = setInterval(() => {
@@ -403,10 +421,10 @@ export default function CallScreen() {
       }
     }, 300);
     return () => clearInterval(timer);
-  }, [session?.id, session?.status]);
+  }, [precallReady, session?.id, session?.status]);
 
   useEffect(() => {
-    if (session?.status !== "active") return undefined;
+    if (!precallReady || session?.status !== "active") return undefined;
     let cancelled = false;
     api
       .post(`/sessions/${id}/call-token`)
@@ -433,7 +451,7 @@ export default function CallScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, session?.status]);
+  }, [precallReady, id, session?.status]);
 
   async function persistDesk({ keepalive = false } = {}) {
     if (watchOnly || user.role !== "translator") return;
@@ -637,6 +655,22 @@ export default function CallScreen() {
     );
   }
 
+  if (!watchOnly && !precallReady) {
+    return (
+      <div className="relative min-h-screen bg-ink">
+        <PreCallCheckModal
+          open
+          voiceOnly={session.callMode === "voice"}
+          onReady={() => setPrecallReady(true)}
+          onCancel={() => {
+            releaseCallMedia();
+            navigate(homeFor(user));
+          }}
+        />
+      </div>
+    );
+  }
+
   const visibleRemotes = remotes.filter((remote) => remote.role !== "admin" && !remote.hidden);
   const counterpart = isClinic
     ? session.translator?.fullName
@@ -666,7 +700,7 @@ export default function CallScreen() {
   function withTranslatorDesk(stage) {
     if (!isTranslator) return stage;
     return (
-      <div className="flex min-h-screen flex-col bg-white lg:flex-row">
+      <div className="flex min-h-screen min-h-[100dvh] flex-col bg-white lg:flex-row">
         <TranslatorCallDesk
           session={session}
           elapsed={elapsed}
@@ -684,8 +718,17 @@ export default function CallScreen() {
           onHandoff={() => setTransferOpen(true)}
           handingOff={handingOff}
           error={deskError}
+          deskTab={deskTab}
+          onDeskTab={(tab) => {
+            setDeskTab(tab);
+            if (tab === "chat") setUnreadCount(0);
+          }}
+          messages={messages}
+          currentUserId={user.id}
+          onSendMessage={sendMessage}
+          unreadCount={unreadCount}
         />
-        <div className="relative min-h-[50vh] min-w-0 w-full flex-1 overflow-hidden bg-black lg:h-auto lg:min-h-screen lg:w-1/2 lg:border-l lg:border-slate-200">
+        <div className="relative min-h-[42vh] min-w-0 w-full flex-1 overflow-hidden bg-black sm:min-h-[48vh] lg:h-auto lg:min-h-screen lg:w-1/2 lg:border-l lg:border-slate-200">
           {stage}
         </div>
       </div>
@@ -730,25 +773,31 @@ export default function CallScreen() {
       }}
       notesOpen={notesOpen}
       canTakeNotes={false}
-      onChat={() => {
-        setChatOpen((v) => {
-          const next = !v;
-          if (next) setUnreadCount(0);
-          return next;
-        });
-        setNotesOpen(false);
-      }}
+      onChat={
+        isTranslator
+          ? undefined
+          : () => {
+              setChatOpen((v) => {
+                const next = !v;
+                if (next) setUnreadCount(0);
+                return next;
+              });
+              setNotesOpen(false);
+            }
+      }
       chatOpen={chatOpen}
-      unreadCount={unreadCount}
+      unreadCount={isTranslator ? 0 : unreadCount}
       endLabel={watchOnly ? "Leave" : "End"}
       watchOnly={watchOnly}
     />
   );
 
+  // Hospital/admin keep the overlay panel. Translators use the desk workspace instead
+  // so chat never covers the live video.
   const sidePanel =
-    chatOpen || notesOpen ? (
-      <div className="absolute inset-x-0 bottom-0 z-30 p-4 sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[360px] sm:p-5">
-        <div className="flex h-full max-h-[70vh] flex-col sm:max-h-none">
+    !isTranslator && (chatOpen || notesOpen) ? (
+      <div className="absolute inset-x-0 bottom-0 z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[min(360px,100%)] sm:p-5 sm:pb-5">
+        <div className="flex h-full max-h-[min(70vh,32rem)] flex-col sm:max-h-none">
           {chatOpen ? (
             <CallChat
               messages={messages}
@@ -800,11 +849,11 @@ export default function CallScreen() {
 
   if (voiceOnly) {
     return withTranslatorDesk(
-      <div className={`voice-stage relative flex flex-col overflow-hidden text-white ${isTranslator ? "h-full min-h-[48vh]" : "min-h-screen"}`}>
+      <div className={`voice-stage relative flex flex-col overflow-hidden text-white ${isTranslator ? "h-full min-h-[42vh] sm:min-h-[48vh]" : "min-h-screen min-h-[100dvh]"}`}>
         {noticeBanner}
-        <header className="relative z-20 flex items-center justify-between px-5 pt-5 md:px-8">
-          <BrandMark tone="dark" />
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em]">
+        <header className="relative z-20 flex items-center justify-between gap-3 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 md:px-8">
+          <BrandMark tone="dark" compact />
+          <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:px-3 sm:text-xs sm:tracking-[0.16em]">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
@@ -909,7 +958,7 @@ export default function CallScreen() {
   }
 
   return withTranslatorDesk(
-    <div className={`relative overflow-hidden bg-black text-white ${isTranslator ? "h-full min-h-[48vh]" : "min-h-screen"}`}>
+    <div className={`relative overflow-hidden bg-black text-white ${isTranslator ? "h-full min-h-[42vh] sm:min-h-[48vh]" : "min-h-screen min-h-[100dvh]"}`}>
       {noticeBanner}
       <div className="absolute inset-0">
         {isDaily ? (
@@ -956,7 +1005,7 @@ export default function CallScreen() {
                   className="absolute inset-0 h-full w-full cursor-pointer object-cover"
                 />
                 {watchOnly ? null : (
-                <div className="absolute bottom-28 right-4 z-20 h-28 w-40 overflow-hidden rounded-xl border border-white/20 bg-black shadow-lift sm:bottom-32 sm:h-32 sm:w-48">
+                <div className="absolute bottom-24 right-3 z-20 h-24 w-32 overflow-hidden rounded-xl border border-white/20 bg-black shadow-lift sm:bottom-32 sm:right-4 sm:h-32 sm:w-48">
                   <video
                     ref={localVideoRef}
                     autoPlay
@@ -988,22 +1037,24 @@ export default function CallScreen() {
         )}
       </div>
 
-      <header className="relative z-20 px-3 pt-3 md:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-full border border-white/10 bg-black/70 px-4 py-2.5 shadow-lg backdrop-blur-md">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandMark tone="dark" />
-            <span className="hidden h-6 w-px bg-white/15 sm:block" />
+      <header className="relative z-20 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-full border border-white/10 bg-black/70 px-3 py-2 shadow-lg backdrop-blur-md sm:gap-3 sm:px-4 sm:py-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <BrandMark tone="dark" compact showWordmark={false} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">
                 {callTitle || "Connecting interpreter…"}
               </p>
               <p className="truncate text-[11px] text-white/50">
-                {session.language?.name || "Consult"} · {session.department?.name} ·{" "}
-                {session.organization?.name}
+                {session.language?.name || "Consult"}
+                {session.department?.name ? ` · ${session.department.name}` : ""}
+                <span className="hidden sm:inline">
+                  {session.organization?.name ? ` · ${session.organization.name}` : ""}
+                </span>
               </p>
             </div>
           </div>
-          <span className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white ${watchOnly ? "bg-slate-600" : "bg-rose-500"}`}>
+          <span className={`inline-flex shrink-0 items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white sm:px-3 sm:text-[11px] sm:tracking-[0.14em] ${watchOnly ? "bg-slate-600" : "bg-rose-500"}`}>
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
@@ -1019,7 +1070,7 @@ export default function CallScreen() {
         </p>
       ) : null}
 
-      <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 to-transparent px-4 pb-8 pt-16">
+      <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 to-transparent px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-14 sm:px-4 sm:pb-8 sm:pt-16">
         {controls}
       </div>
       {sidePanel}

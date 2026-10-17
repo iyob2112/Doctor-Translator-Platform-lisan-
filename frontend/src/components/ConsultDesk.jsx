@@ -136,7 +136,7 @@ export default function ConsultDesk({ departments = [] }) {
         <Stat icon="star" label="Avg rating" value={stats.avg} tone="amber" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+      <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-[1.08fr_0.92fr]">
         <Card>
           <CardTitle
             icon="stetho"
@@ -177,7 +177,7 @@ export default function ConsultDesk({ departments = [] }) {
 
           <div className="mt-6">
             <p className="label">Call mode</p>
-            <div className="mt-2 inline-flex rounded-full border border-slate-200 bg-white/70 p-1">
+            <div className="mt-2 flex w-full flex-wrap gap-1 rounded-full border border-slate-200 bg-white/70 p-1 sm:inline-flex sm:w-auto">
               {[
                 { value: "video", label: "Video", icon: "video" },
                 { value: "voice", label: "Voice only", icon: "voice" },
@@ -185,7 +185,7 @@ export default function ConsultDesk({ departments = [] }) {
                 <button
                   key={mode.value}
                   onClick={() => setCallMode(mode.value)}
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition sm:flex-none sm:py-2 ${
                     callMode === mode.value
                       ? "bg-ink text-white shadow-sm"
                       : "text-slate-500 hover:text-ink"

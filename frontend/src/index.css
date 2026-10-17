@@ -7,14 +7,27 @@
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
     min-height: 100vh;
+    min-height: 100dvh;
     background-color: #f5f7fb;
     background-image:
       radial-gradient(760px 420px at 8% -8%, rgba(20, 166, 141, 0.18), transparent 60%),
       radial-gradient(680px 380px at 96% 2%, rgba(122, 82, 245, 0.16), transparent 58%),
       radial-gradient(900px 520px at 50% 108%, rgba(56, 194, 168, 0.12), transparent 60%);
-    background-attachment: fixed;
+    background-attachment: scroll;
+    overflow-x: hidden;
+  }
+
+  @media (min-width: 1024px) {
+    body {
+      background-attachment: fixed;
+    }
   }
 
   h1,
@@ -30,11 +43,11 @@
 
 @layer components {
   .card {
-    @apply rounded-4xl border border-white/70 bg-white/80 p-6 shadow-soft backdrop-blur-xl;
+    @apply rounded-3xl border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur-xl sm:rounded-4xl sm:p-6;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition
       focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 active:scale-[0.98];
   }
 
@@ -72,7 +85,7 @@
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition;
+    @apply inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition sm:min-h-0 sm:py-1.5;
   }
 
   .chip-on {

@@ -207,13 +207,13 @@ export default function TranslatorDashboard() {
                   role="switch"
                   aria-checked={online}
                   aria-label="Toggle availability"
-                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${
+                  className={`relative h-11 w-[3.75rem] shrink-0 rounded-full transition ${
                     online ? "bg-brand-500" : "bg-slate-300"
                   }`}
                 >
                   <span
-                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${
-                      online ? "left-7" : "left-1"
+                    className={`absolute top-1.5 h-8 w-8 rounded-full bg-white shadow transition-all ${
+                      online ? "left-7" : "left-1.5"
                     }`}
                   />
                 </button>

@@ -164,7 +164,7 @@ export default function AdminBilling() {
             <Card>
               <CardTitle icon="clock" title="Adjust minutes" hint="Use a negative number to deduct." />
               <form
-                className="mt-4 grid gap-3 md:grid-cols-4"
+                className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   save(async () => {
@@ -213,7 +213,7 @@ export default function AdminBilling() {
             <Card>
               <CardTitle icon="coin" title="Monthly plans" hint="Device limits and prices are stored here, not in the frontend." />
               <form
-                className="mt-4 grid gap-3 md:grid-cols-5"
+                className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
                 onSubmit={(e) => {
                   e.preventDefault();
                   save(async () => {
@@ -236,7 +236,7 @@ export default function AdminBilling() {
                   return (
                     <div key={plan.id} className="rounded-3xl border border-slate-200/80 p-4">
                       <form
-                        className="grid gap-2 md:grid-cols-5"
+                        className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5"
                         onSubmit={(e) => {
                           e.preventDefault();
                           const data = Object.fromEntries(new FormData(e.currentTarget));
@@ -307,7 +307,7 @@ export default function AdminBilling() {
             <Card>
               <CardTitle icon="clock" title="Minute packages" />
               <form
-                className="mt-4 grid gap-3 md:grid-cols-4"
+                className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   save(async () => {
@@ -325,7 +325,7 @@ export default function AdminBilling() {
                 {catalog.packages.map((pkg) => (
                   <form
                     key={pkg.id}
-                    className="grid gap-2 rounded-3xl border border-slate-200/80 p-4 md:grid-cols-5"
+                    className="grid gap-2 rounded-3xl border border-slate-200/80 p-4 sm:grid-cols-2 lg:grid-cols-5"
                     onSubmit={(e) => {
                       e.preventDefault();
                       const data = Object.fromEntries(new FormData(e.currentTarget));
@@ -404,7 +404,7 @@ export default function AdminBilling() {
                 hint="Choose ETB per hour or per minute. Hospitals on on-demand are billed monthly at this rate. Unpaid bills block consults."
               />
               <form
-                className="mt-4 grid gap-3 md:grid-cols-4"
+                className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   save(async () => {
@@ -510,7 +510,25 @@ export default function AdminBilling() {
         {tab === "payments" ? (
           <Card>
             <CardTitle icon="coin" title="Chapa payments" />
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 space-y-3 lg:hidden">
+              {payments.map((p) => (
+                <div key={p.id} className="rounded-2xl border border-slate-200/80 px-4 py-3 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold">{p.organization?.name || "—"}</p>
+                      <p className="mt-0.5 capitalize text-slate-500">{p.kind.replace("_", " ")}</p>
+                      <p className="mt-1 text-xs text-slate-400">{formatWhen(p.createdAt)}</p>
+                    </div>
+                    <StatusPill status={p.status} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="font-semibold">{formatEtb(p.amountEtb)}</p>
+                    <p className="truncate font-mono text-[11px] text-slate-400">{p.txRef}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 hidden overflow-x-auto lg:block">
               <table className="w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-wide text-slate-400">
                   <tr>

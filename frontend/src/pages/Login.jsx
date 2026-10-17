@@ -40,26 +40,26 @@ export default function Login() {
   }
 
   return (
-    <div className="mx-auto grid min-h-screen max-w-7xl items-center gap-8 px-4 py-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="relative overflow-hidden rounded-4xl bg-ink p-8 text-white shadow-lift md:p-12">
+    <div className="mx-auto grid min-h-screen min-h-[100dvh] max-w-7xl items-center gap-6 px-3 py-6 sm:gap-8 sm:px-4 sm:py-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative order-2 overflow-hidden rounded-3xl bg-ink p-6 text-white shadow-lift sm:rounded-4xl sm:p-8 md:p-12 lg:order-1">
         <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brand-500/30 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -right-16 h-80 w-80 rounded-full bg-plum-500/30 blur-3xl" />
 
         <div className="relative">
           <BrandMark tone="dark" />
 
-          <h1 className="mt-10 font-display text-4xl leading-[1.1] md:text-5xl">
+          <h1 className="mt-6 font-display text-3xl leading-[1.1] sm:mt-10 sm:text-4xl md:text-5xl">
             A live interpreter in the exam room —
             <span className="bg-gradient-to-r from-brand-300 to-plum-300 bg-clip-text text-transparent">
               {" "}not another patient portal.
             </span>
           </h1>
-          <p className="mt-5 max-w-md text-base leading-7 text-white/70">
+          <p className="mt-4 max-w-md text-sm leading-6 text-white/70 sm:mt-5 sm:text-base sm:leading-7">
             The patient stays in the exam room. When language gets in the way, the hospital pages a
             translator who joins by video or voice and relays the consult in real time.
           </p>
 
-          <ul className="mt-9 space-y-4">
+          <ul className="mt-6 hidden space-y-4 sm:mt-9 md:block">
             {highlights.map((h) => (
               <li key={h.title} className="flex items-start gap-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10 text-brand-200">
@@ -73,7 +73,7 @@ export default function Login() {
             ))}
           </ul>
 
-          <div className="mt-10 animate-float rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-xl sm:max-w-sm">
+          <div className="mt-6 hidden animate-float rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-xl sm:mt-10 sm:block sm:max-w-sm">
             <p className="text-[11px] uppercase tracking-[0.22em] text-white/50">Incoming request</p>
             <div className="mt-3 flex items-center justify-between gap-4">
               <div>
@@ -89,8 +89,8 @@ export default function Login() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-md">
-        <form onSubmit={submit} className="card animate-fade-up p-8">
+      <section className="order-1 mx-auto w-full max-w-md lg:order-2">
+        <form onSubmit={submit} className="card animate-fade-up p-5 sm:p-8">
           <h2 className="font-display text-2xl">Sign in</h2>
           <p className="mt-1 text-sm text-slate-500">Staff access only — no patient accounts.</p>
 

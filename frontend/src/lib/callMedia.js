@@ -71,6 +71,19 @@ export function takeCallMedia() {
   return streamIsLive(cachedStream) ? cachedStream : null;
 }
 
+/** Store a live stream from pre-call checks so join can reuse it. */
+export function setPrimedMedia(stream) {
+  if (!streamIsLive(stream)) return;
+  if (cachedStream && cachedStream !== stream) {
+    const keep = new Set(stream.getTracks());
+    cachedStream.getTracks?.().forEach((track) => {
+      // Never stop a track that is still part of the stream we are keeping.
+      if (!keep.has(track)) track.stop();
+    });
+  }
+  cachedStream = stream;
+}
+
 export function releaseCallMedia() {
   cachedStream?.getTracks?.().forEach((track) => track.stop());
   cachedStream = null;

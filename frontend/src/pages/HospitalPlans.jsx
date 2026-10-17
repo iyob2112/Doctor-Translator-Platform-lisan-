@@ -254,15 +254,15 @@ export default function HospitalPlans() {
           ) : null}
           <div className="mt-5 space-y-3">
             {(catalog?.plans || []).map((plan) => (
-              <div key={plan.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white/70 p-4">
-                <div>
+              <div key={plan.id} className="flex flex-col gap-3 rounded-3xl border border-slate-200/80 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="font-semibold">{plan.name}</p>
                   <p className="text-sm text-slate-500">
                     {formatEtb(plan.priceEtb)} / month · {plan.maxDevices} devices
                   </p>
                 </div>
                 <button
-                  className="btn-dark"
+                  className="btn-dark w-full sm:w-auto"
                   disabled={Boolean(busy)}
                   onClick={() => pay("/billing/subscriptions", { planId: plan.id }, `plan-${plan.id}`)}
                 >
@@ -293,13 +293,13 @@ export default function HospitalPlans() {
           )}
           <div className="mt-5 space-y-3">
             {(catalog?.packages || []).map((pkg) => (
-              <div key={pkg.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200/80 bg-white/70 p-4">
-                <div>
+              <div key={pkg.id} className="flex flex-col gap-3 rounded-3xl border border-slate-200/80 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="font-semibold">{pkg.name}</p>
                   <p className="text-sm text-slate-500">{formatEtb(pkg.priceEtb)}</p>
                 </div>
                 <button
-                  className="btn-dark"
+                  className="btn-dark w-full sm:w-auto"
                   disabled={Boolean(busy)}
                   onClick={() => pay("/billing/minutes", { packageId: pkg.id }, `pkg-${pkg.id}`)}
                 >
@@ -406,14 +406,14 @@ export default function HospitalPlans() {
               {(me?.devices || []).map((d) => {
                 const mine = d.fingerprint === getDeviceFingerprint();
                 return (
-                  <li key={d.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 px-4 py-3 text-sm">
-                    <span>
+                  <li key={d.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <span className="min-w-0">
                       <span className="font-medium">{d.label}</span>
                       <span className="ml-2 text-slate-400">{d.isActive ? "Active" : "Off"}</span>
                       {mine ? <span className="ml-2 font-semibold text-brand-700">This computer</span> : null}
                     </span>
                     {d.isActive ? (
-                      <button className="btn-ghost" onClick={() => deactivate(d.id)}>Deactivate</button>
+                      <button className="btn-ghost w-full sm:w-auto" onClick={() => deactivate(d.id)}>Deactivate</button>
                     ) : null}
                   </li>
                 );
@@ -441,7 +441,21 @@ export default function HospitalPlans() {
 
       <Card className="mt-6">
         <CardTitle icon="coin" title="Payment history" />
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 space-y-3 md:hidden">
+          {(me?.payments || []).map((p) => (
+            <div key={p.id} className="rounded-2xl border border-slate-200/80 px-4 py-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium capitalize">{p.kind.replace(/_/g, " ")}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{formatWhen(p.createdAt)}</p>
+                </div>
+                <StatusPill status={p.status} />
+              </div>
+              <p className="mt-2 font-semibold">{formatEtb(p.amountEtb)}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-slate-400">
               <tr>

@@ -419,7 +419,7 @@ export default function AdminDashboard() {
               }
             />
 
-            <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               <select
                 value={filters.doctor_id}
                 onChange={(e) => setFilters((f) => ({ ...f, doctor_id: e.target.value }))}
@@ -480,132 +480,207 @@ export default function AdminDashboard() {
               />
             </div>
 
-            <div className="scroll-area mt-6 overflow-x-auto">
-              <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-left text-sm">
-                <thead>
-                  <tr className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                    <th className="px-4 pb-1 font-semibold">When</th>
-                    <th className="px-4 pb-1 font-semibold">Hospital</th>
-                    <th className="px-4 pb-1 font-semibold">Interpreter</th>
-                    <th className="px-4 pb-1 font-semibold">Language</th>
-                    <th className="px-4 pb-1 font-semibold">Department</th>
-                    <th className="px-4 pb-1 font-semibold">Duration</th>
-                    <th className="px-4 pb-1 font-semibold">Rating</th>
-                    <th className="px-4 pb-1 font-semibold">Status</th>
-                    <th className="px-4 pb-1 font-semibold">Live</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {!sessions.length ? (
+              <div className="mt-6">
+                <EmptyState
+                  icon="filter"
+                  title="No matching sessions"
+                  hint="Try widening the filters or clearing them."
+                />
+              </div>
+            ) : (
+              <>
+                <div className="mt-6 space-y-3 lg:hidden">
                   {sessions.map((s) => {
                     const open = openSessionId === s.id;
                     return (
-                      <Fragment key={s.id}>
-                        <tr
+                      <article
+                        key={s.id}
+                        className="rounded-3xl border border-slate-200/80 bg-white/80 p-4"
+                      >
+                        <button
+                          type="button"
+                          className="flex w-full items-start justify-between gap-3 text-left"
                           onClick={() => setOpenSessionId(open ? "" : s.id)}
-                          className="cursor-pointer bg-white/70 transition hover:bg-white [&>td]:border-y [&>td]:border-slate-200/70 [&>td]:px-4 [&>td]:py-3 [&>td:first-child]:rounded-l-2xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-2xl [&>td:last-child]:border-r"
                         >
-                          <td className="whitespace-nowrap text-slate-500">
-                            {new Date(s.createdAt).toLocaleString()}
-                          </td>
-                          <td className="font-medium">{s.organization?.name || clinicLabel(s)}</td>
-                          <td>{s.translator?.fullName || <span className="text-slate-400">—</span>}</td>
-                          <td>{s.language?.name || <span className="text-slate-400">—</span>}</td>
-                          <td className="text-slate-500">{s.department?.name || "—"}</td>
-                          <td className="whitespace-nowrap text-slate-500">
+                          <div className="min-w-0">
+                            <p className="text-xs text-slate-400">
+                              {new Date(s.createdAt).toLocaleString()}
+                            </p>
+                            <p className="mt-1 font-semibold">
+                              {s.organization?.name || clinicLabel(s)}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {s.translator?.fullName || "No interpreter"} · {s.language?.name || "—"}
+                            </p>
+                          </div>
+                          <StatusPill status={s.status} />
+                        </button>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-slate-500">
                             {formatDuration(s.durationSeconds)}
-                          </td>
-                          <td>
-                            {s.providerRating ? (
-                              <Stars value={s.providerRating} className="h-3.5 w-3.5" />
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-                          <td>
-                            <StatusPill status={s.status} />
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
+                            {s.department?.name ? ` · ${s.department.name}` : ""}
+                          </span>
+                          {s.providerRating ? (
+                            <Stars value={s.providerRating} className="h-3.5 w-3.5" />
+                          ) : null}
+                          <div className="ml-auto">
                             <JoinLiveButton sessionId={s.id} status={s.status} />
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                         {open ? (
-                          <tr>
-                            <td colSpan={9} className="px-4 pb-4">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm">
-                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                  <p>
-                                    <span className="label">Doctor</span>
-                                    <span className="mt-1 block font-semibold">
-                                      {s.attendingName || "—"}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="label">Room</span>
-                                    <span className="mt-1 block font-semibold">{s.roomLabel || "—"}</span>
-                                  </p>
-                                  <p>
-                                    <span className="label">Reason for visit</span>
-                                    <span className="mt-1 block font-semibold">
-                                      {s.visitReason || "—"}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="label">Hospital rating</span>
-                                    <span className="mt-1 block font-semibold">
-                                      {s.providerRating ? `${s.providerRating} / 5` : "—"}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="label">Problems</span>
-                                    <span className="mt-1 block font-semibold">
-                                      {s.providerRatingComment || "—"}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="label">Hand off</span>
-                                    <span className="mt-1 block font-semibold">
-                                      {s.handoffReason ||
-                                        s.transfers?.[0]?.reason ||
-                                        "—"}
-                                    </span>
-                                  </p>
-                                </div>
-                                <p className="mt-4">
-                                  <span className="label">Interpreter notes</span>
-                                  <span className="mt-1 block whitespace-pre-wrap font-medium text-slate-700">
-                                    {s.interpreterNotes || "—"}
-                                  </span>
-                                </p>
-                                {s.transfers?.length ? (
-                                  <ul className="mt-4 space-y-1 text-slate-600">
-                                    {s.transfers.map((t) => (
-                                      <li key={t.id}>
-                                        {t.fromTranslator?.fullName || "Interpreter"} →{" "}
-                                        {t.toTranslator?.fullName || "Interpreter"}
-                                        {t.reason ? ` · ${t.reason}` : ""}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : null}
-                              </div>
-                            </td>
-                          </tr>
+                          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <p>
+                                <span className="label">Doctor</span>
+                                <span className="mt-1 block font-semibold">{s.attendingName || "—"}</span>
+                              </p>
+                              <p>
+                                <span className="label">Room</span>
+                                <span className="mt-1 block font-semibold">{s.roomLabel || "—"}</span>
+                              </p>
+                              <p>
+                                <span className="label">Reason for visit</span>
+                                <span className="mt-1 block font-semibold">{s.visitReason || "—"}</span>
+                              </p>
+                              <p>
+                                <span className="label">Problems</span>
+                                <span className="mt-1 block font-semibold">
+                                  {s.providerRatingComment || "—"}
+                                </span>
+                              </p>
+                            </div>
+                            <p className="mt-3">
+                              <span className="label">Interpreter notes</span>
+                              <span className="mt-1 block whitespace-pre-wrap font-medium text-slate-700">
+                                {s.interpreterNotes || "—"}
+                              </span>
+                            </p>
+                          </div>
                         ) : null}
-                      </Fragment>
+                      </article>
                     );
                   })}
-                </tbody>
-              </table>
-              {!sessions.length ? (
-                <div className="mt-4">
-                  <EmptyState
-                    icon="filter"
-                    title="No matching sessions"
-                    hint="Try widening the filters or clearing them."
-                  />
                 </div>
-              ) : null}
-            </div>
+                <div className="scroll-area mt-6 hidden overflow-x-auto lg:block">
+                  <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-left text-sm">
+                    <thead>
+                      <tr className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                        <th className="px-4 pb-1 font-semibold">When</th>
+                        <th className="px-4 pb-1 font-semibold">Hospital</th>
+                        <th className="px-4 pb-1 font-semibold">Interpreter</th>
+                        <th className="px-4 pb-1 font-semibold">Language</th>
+                        <th className="px-4 pb-1 font-semibold">Department</th>
+                        <th className="px-4 pb-1 font-semibold">Duration</th>
+                        <th className="px-4 pb-1 font-semibold">Rating</th>
+                        <th className="px-4 pb-1 font-semibold">Status</th>
+                        <th className="px-4 pb-1 font-semibold">Live</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessions.map((s) => {
+                        const open = openSessionId === s.id;
+                        return (
+                          <Fragment key={s.id}>
+                            <tr
+                              onClick={() => setOpenSessionId(open ? "" : s.id)}
+                              className="cursor-pointer bg-white/70 transition hover:bg-white [&>td]:border-y [&>td]:border-slate-200/70 [&>td]:px-4 [&>td]:py-3 [&>td:first-child]:rounded-l-2xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-2xl [&>td:last-child]:border-r"
+                            >
+                              <td className="whitespace-nowrap text-slate-500">
+                                {new Date(s.createdAt).toLocaleString()}
+                              </td>
+                              <td className="font-medium">{s.organization?.name || clinicLabel(s)}</td>
+                              <td>{s.translator?.fullName || <span className="text-slate-400">—</span>}</td>
+                              <td>{s.language?.name || <span className="text-slate-400">—</span>}</td>
+                              <td className="text-slate-500">{s.department?.name || "—"}</td>
+                              <td className="whitespace-nowrap text-slate-500">
+                                {formatDuration(s.durationSeconds)}
+                              </td>
+                              <td>
+                                {s.providerRating ? (
+                                  <Stars value={s.providerRating} className="h-3.5 w-3.5" />
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                              <td>
+                                <StatusPill status={s.status} />
+                              </td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <JoinLiveButton sessionId={s.id} status={s.status} />
+                              </td>
+                            </tr>
+                            {open ? (
+                              <tr>
+                                <td colSpan={9} className="px-4 pb-4">
+                                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm">
+                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                      <p>
+                                        <span className="label">Doctor</span>
+                                        <span className="mt-1 block font-semibold">
+                                          {s.attendingName || "—"}
+                                        </span>
+                                      </p>
+                                      <p>
+                                        <span className="label">Room</span>
+                                        <span className="mt-1 block font-semibold">{s.roomLabel || "—"}</span>
+                                      </p>
+                                      <p>
+                                        <span className="label">Reason for visit</span>
+                                        <span className="mt-1 block font-semibold">
+                                          {s.visitReason || "—"}
+                                        </span>
+                                      </p>
+                                      <p>
+                                        <span className="label">Hospital rating</span>
+                                        <span className="mt-1 block font-semibold">
+                                          {s.providerRating ? `${s.providerRating} / 5` : "—"}
+                                        </span>
+                                      </p>
+                                      <p>
+                                        <span className="label">Problems</span>
+                                        <span className="mt-1 block font-semibold">
+                                          {s.providerRatingComment || "—"}
+                                        </span>
+                                      </p>
+                                      <p>
+                                        <span className="label">Hand off</span>
+                                        <span className="mt-1 block font-semibold">
+                                          {s.handoffReason ||
+                                            s.transfers?.[0]?.reason ||
+                                            "—"}
+                                        </span>
+                                      </p>
+                                    </div>
+                                    <p className="mt-4">
+                                      <span className="label">Interpreter notes</span>
+                                      <span className="mt-1 block whitespace-pre-wrap font-medium text-slate-700">
+                                        {s.interpreterNotes || "—"}
+                                      </span>
+                                    </p>
+                                    {s.transfers?.length ? (
+                                      <ul className="mt-4 space-y-1 text-slate-600">
+                                        {s.transfers.map((t) => (
+                                          <li key={t.id}>
+                                            {t.fromTranslator?.fullName || "Interpreter"} →{" "}
+                                            {t.toTranslator?.fullName || "Interpreter"}
+                                            {t.reason ? ` · ${t.reason}` : ""}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : null}
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </Card>
         ) : null}
 
@@ -688,21 +763,21 @@ export default function AdminDashboard() {
                               setResetFor(resetFor === u.id ? null : u.id);
                               setResetPassword("");
                             }}
-                            className="rounded-full p-2 text-slate-400 transition hover:bg-amber-50 hover:text-amber-700"
+                            className="grid h-11 w-11 place-items-center rounded-full text-slate-400 transition hover:bg-amber-50 hover:text-amber-700"
                             title="Reset password"
                           >
                             <Icon name="key" className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => deactivate(u.id)}
-                            className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                            className="grid h-11 w-11 place-items-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                             title="Deactivate account"
                           >
                             <Icon name="x" className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => removeUser(u.id)}
-                            className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-700"
+                            className="grid h-11 w-11 place-items-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-700"
                             title="Delete account"
                           >
                             <Icon name="trash" className="h-4 w-4" />
@@ -713,7 +788,7 @@ export default function AdminDashboard() {
                           <span className="chip bg-slate-100 text-slate-500">off</span>
                           <button
                             onClick={() => activate(u.id)}
-                            className="rounded-full p-2 text-slate-400 transition hover:bg-brand-50 hover:text-brand-700"
+                            className="grid h-11 w-11 place-items-center rounded-full text-slate-400 transition hover:bg-brand-50 hover:text-brand-700"
                             title="Activate account"
                           >
                             <Icon name="check" className="h-4 w-4" />
