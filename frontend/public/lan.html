@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lisan — Phone / LAN setup</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 36rem;
+        margin: 2rem auto;
+        padding: 0 1.25rem;
+        line-height: 1.5;
+        color: #0f172a;
+      }
+      a.btn {
+        display: inline-block;
+        margin: 0.5rem 0.5rem 0.5rem 0;
+        padding: 0.75rem 1.1rem;
+        border-radius: 999px;
+        background: #0f172a;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      a.ghost {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+      code {
+        background: #f1f5f9;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.35rem;
+      }
+      .box {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 1rem;
+        padding: 1rem 1.1rem;
+        margin: 1rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Open Lisan on your phone</h1>
+    <p>
+      Camera and microphone only work on <strong>https://</strong> after you trust the Lisan
+      certificate on this device.
+    </p>
+    <div class="box">
+      <strong>Do this first on the phone</strong>
+      <ol>
+        <li>Stay on the same Wi‑Fi / hotspot as the PC.</li>
+        <li>Tap <strong>Download certificate</strong> below and install it.</li>
+        <li>
+          <strong>iPhone:</strong> Settings → Profile Downloaded → Install → then General → About →
+          Certificate Trust Settings → enable <em>Lisan</em>.
+        </li>
+        <li>
+          <strong>Android:</strong> open the downloaded <code>.crt</code> → install as CA / VPN &amp;
+          apps (wording varies).
+        </li>
+        <li>Come back and tap <strong>Open Lisan</strong>.</li>
+      </ol>
+    </div>
+    <p>
+      This page:
+      <code id="here"></code>
+    </p>
+    <a class="btn" id="app" href="/login">Open Lisan</a>
+    <a class="btn ghost" href="/lisan-ca.crt">Download certificate</a>
+    <script>
+      document.getElementById("here").textContent = location.origin;
+      document.getElementById("app").href = location.origin + "/login";
+    </script>
+  </body>
+</html>
